@@ -1,0 +1,19 @@
+{
+  "name": "mood-board",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.cjs"
+  },
+  "dependencies": {
+    "@huggingface/inference": "^4.0.3",
+    "canvas": "^3.1.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "http-proxy-middleware": "^3.0.5",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.5"
+  }
+}

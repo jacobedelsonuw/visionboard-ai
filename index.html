@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionBoard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>VisionBoard</h1>
+            <div class="controls">
+                <input type="text" id="prompt-input" placeholder="Describe your vision...">
+                <button id="generate-btn" title="Generate image from prompt">Generate</button>
+                <div class="toggle-controls">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="auto-generate-toggle">
+                        <span>Auto Generate</span>
+                    </label>
+                    <label class="toggle-label">
+                        <input type="range" id="speed-control" min="1" max="10" value="5" title="Generation Speed (5-15s for contextual)">
+                        <span>Speed</span>
+                    </label>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="contextual-toggle">
+                        <span>Contextual Generation</span>
+                    </label>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="service-toggle" title="Toggle between Replicate (unchecked) and Stable Diffusion (checked)">
+                        <span>Use Stable Diffusion</span>
+                    </label>
+                    <label class="toggle-label">
+                        <input type="checkbox" id="audio-input-toggle">
+                        <span>Audio Input</span>
+                    </label>
+                </div>
+                <div class="action-buttons">
+                    <button id="generate-connected-btn" title="Generate image from connected images">Generate Connected</button>
+                    <button id="export-btn" title="Export mood board as image">Export Board</button>
+                    <button id="export-powerpoint-btn" title="Export to PowerPoint">Export to PowerPoint</button>
+                    <button id="export-slides-btn" title="Export to Google Slides">Export to Google Slides</button>
+                    <button id="clearBtn" title="Clear all images from board">Clear Board</button>
+                    <button id="uploadBtn" title="Upload your own image">Upload Image</button>
+                    <input type="file" id="imageUploadInput" accept="image/*" style="display:none;">
+                </div>
+            </div>
+            <div class="stats">
+                <span id="imageCount">Images: 0</span>
+                <span id="contextualCount">Contextual: 0</span>
+                <span id="connectionCount">Connected: 0</span>
+                <span id="service-status" class="service-status">Using: Replicate API</span>
+                <span id="sentiment-display" class="sentiment-display"></span>
+            </div>
+        </header>
+        <main>
+            <div class="instructions">
+                <p><strong>Image Controls:</strong> Alt+Click = Delete | Double-Click = Connect/Disconnect | Hover for menu</p>
+            </div>
+            <div id="mood-board" class="mood-board"></div>
+        </main>
+        <div id="image-modal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span id="modal-close" class="close">&times;</span>
+                <div class="modal-body">
+                    <img id="modal-image" src="" alt="Generated image">
+                    <div class="prompt-section">
+                        <textarea id="modal-prompt" placeholder="Enhance the prompt..."></textarea>
+                        <button id="modal-regenerate">Regenerate</button>
+                        <button id="modal-save">Save to Board</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="exportModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <div class="modal-body">
+                    <div id="exportLoading" class="loading">Exporting...</div>
+                    <div id="exportPreview"></div>
+                </div>
+            </div>
+        </div>
+        <div id="status-text" class="status-text"></div>
+        <div id="loading" class="loading" style="display:none;">Generating...</div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+    <script src="config.js"></script>
+    <script src="dist/bundle.js"></script>
+</body>
+</html> 

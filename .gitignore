@@ -1,0 +1,44 @@
+# API Keys and Local Configuration
+config.local.js
+*.local.js
+
+# Environment Variables
+.env
+.env.local
+.env.production
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Build outputs
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/ 
