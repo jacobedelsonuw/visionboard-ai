@@ -4,6 +4,12 @@ An intelligent mood board generator that creates AI-powered images with progress
 
 ![VisionBoard AI Screenshot](image.png)
 
+## 🎥 Demo Video
+
+https://github.com/jacobedelsonuw/visionboard-ai/assets/demo.mov
+
+*Watch VisionBoard AI in action: progressive image generation, voice control, and intelligent mood board creation*
+
 ## ✨ Features
 
 ### 🖼️ Progressive Image Generation
