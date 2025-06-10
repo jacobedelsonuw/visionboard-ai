@@ -155,83 +155,64 @@ export class AIImageService {
     }
 
     async _generateProgressiveImages(prompt) {
+        console.log('🎨 Starting progressive image generation for prompt:', prompt);
         const sequence = this.config.PROGRESSIVE_GENERATION.SEQUENCE;
-        const delay = this.config.PROGRESSIVE_GENERATION.DELAY_BETWEEN_GENERATIONS;
-        let firstImageUrl = null;
-        let enhancedPrompt = null;
-        let replicateFailures = 0;
-
         console.log('🔄 Progressive generation sequence:', sequence);
-
+        
+        let lastImageUrl = null;
+        let imageElement = null;
+        let imageId = null;
+        
         for (let i = 0; i < sequence.length; i++) {
             const quality = sequence[i];
+            const delay = this.config.PROGRESSIVE_GENERATION.DELAY_BETWEEN_GENERATIONS || 500;
             
-            if (quality === 'ENHANCED_HIGH') {
-                // Generate enhanced prompt first
-                if (!enhancedPrompt) {
-                    try {
-                        console.log('✨ Generating enhanced prompt...');
-                        enhancedPrompt = await this._enhancePrompt(prompt);
-                    } catch (error) {
-                        console.warn('⚠️ Prompt enhancement failed:', error);
-                        enhancedPrompt = prompt; // Fallback to original
-                    }
-                }
-                
-                console.log(`🎨 Generating ${quality} image with enhanced prompt...`);
-                
-                // Generate HIGH quality with enhanced prompt
-                const imageUrl = await this._generateImageWithQuality(enhancedPrompt, 'HIGH', replicateFailures);
-                
-                if (imageUrl) {
-                    // Add to board immediately
-                    if (this.onImageGenerated) {
-                        this.onImageGenerated(imageUrl, `Enhanced: ${enhancedPrompt}`);
-                    }
-                    if (!firstImageUrl) firstImageUrl = imageUrl;
-                } else {
-                    console.warn(`⚠️ Failed to generate ${quality} image`);
-                    // Create fallback placeholder
-                    const fallbackUrl = this._createFallbackImage(enhancedPrompt, quality);
-                    if (this.onImageGenerated) {
-                        this.onImageGenerated(fallbackUrl, `Enhanced: ${enhancedPrompt}`);
-                    }
-                    if (!firstImageUrl) firstImageUrl = fallbackUrl;
-                }
-            } else {
+            try {
                 console.log(`🎨 Generating ${quality} quality image...`);
-                
-                const imageUrl = await this._generateImageWithQuality(prompt, quality, replicateFailures);
+                const imageUrl = await this._generateImageWithQuality(prompt, quality, this.replicateFailures);
                 
                 if (imageUrl) {
-                    // Add to board immediately  
-                    if (this.onImageGenerated) {
-                        this.onImageGenerated(imageUrl, `${quality}: ${prompt}`);
+                    lastImageUrl = imageUrl;
+                    
+                    if (i === 0) {
+                        // First image (LOW quality): Add to board immediately
+                        console.log(`✅ ${quality} quality image generated - adding to board`);
+                        if (this.addImageCallback) {
+                            imageId = this.addImageCallback(imageUrl, prompt);
+                            console.log(`📋 Added initial ${quality} image to board with ID: ${imageId}`);
+                        }
+                    } else {
+                        // Higher quality images: Replace existing image in background
+                        console.log(`✅ ${quality} quality image generated - upgrading existing image`);
+                        if (this.addImageCallback && imageId) {
+                            // Use a special method to replace/upgrade existing image
+                            this.upgradeImageCallback && this.upgradeImageCallback(imageId, imageUrl, `${prompt} (${quality} quality)`);
+                            console.log(`🔄 Upgraded image ${imageId} to ${quality} quality`);
+                        }
                     }
-                    if (!firstImageUrl) firstImageUrl = imageUrl;
+                    
+                    // Add delay before next quality level (except for the last one)
+                    if (i < sequence.length - 1) {
+                        console.log(`⏳ Waiting ${delay}ms before generating ${sequence[i + 1]} quality...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
                 } else {
-                    console.warn(`⚠️ Failed to generate ${quality} image`);
-                    // Track replicate failures for fallback logic
-                    if (replicateFailures < 2) {
-                        replicateFailures++;
-                    }
-                    // Create fallback placeholder
-                    const fallbackUrl = this._createFallbackImage(prompt, quality);
-                    if (this.onImageGenerated) {
-                        this.onImageGenerated(fallbackUrl, `${quality}: ${prompt}`);
-                    }
-                    if (!firstImageUrl) firstImageUrl = fallbackUrl;
+                    console.warn(`⚠️ Failed to generate ${quality} quality image, continuing with next quality level...`);
                 }
-            }
-            
-            // Add delay between generations (except for the last one)
-            if (i < sequence.length - 1) {
-                console.log(`⏳ Waiting ${delay}ms before next quality level...`);
-                await new Promise(resolve => setTimeout(resolve, delay));
+            } catch (error) {
+                console.error(`❌ Error generating ${quality} quality:`, error.message);
+                
+                // For the first image, still try to continue with higher quality
+                if (i === 0) {
+                    console.log('🔄 First image failed, trying next quality level...');
+                } else {
+                    console.log(`🔄 ${quality} enhancement failed, continuing background enhancement...`);
+                }
             }
         }
         
-        return firstImageUrl;
+        console.log('🏁 Progressive generation completed');
+        return lastImageUrl;
     }
 
     async _generateImageWithQualitySkipReplicate(prompt, quality) {
@@ -298,52 +279,42 @@ export class AIImageService {
     }
 
     async generateWithReplicateQuality(prompt, quality) {
-        if (!this.config.REPLICATE.ENABLED) return null;
-        
+        console.log(`🎨 Using Replicate API with ${quality} quality settings:`, this.config.REPLICATE.QUALITY_LEVELS[quality]);
         const qualitySettings = this.config.REPLICATE.QUALITY_LEVELS[quality] || this.config.REPLICATE.QUALITY_LEVELS.MEDIUM;
-        console.log(`🎨 Using Replicate API with ${quality} quality settings:`, qualitySettings);
         
-        const safePrompt = `${prompt}, safe for work, family friendly, professional, artistic, tasteful`;
-        const negativePrompt = "nsfw, inappropriate, offensive, explicit, adult content, nudity, violence, gore, disturbing content";
-
         try {
-            const response = await fetch('/api/replicate/predictions', {
+            const prediction = await fetch('http://localhost:3000/api/replicate/predictions', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     version: this.config.REPLICATE.MODEL_VERSION,
                     input: {
-                        prompt: safePrompt,
-                        negative_prompt: negativePrompt,
-                        num_inference_steps: qualitySettings.steps,
-                        guidance_scale: qualitySettings.guidance_scale,
-                        scheduler: "K_EULER",
-                        num_outputs: 1,
+                        prompt: prompt,
                         width: qualitySettings.width,
                         height: qualitySettings.height,
-                        safety_checker: this.config.REPLICATE.SAFETY_CHECKER
+                        num_inference_steps: qualitySettings.steps,
+                        guidance_scale: qualitySettings.guidance_scale,
+                        safety_checker: false // Disabled to allow romantic/love content
                     }
                 })
             });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(`Replicate API error: ${error.detail || response.statusText}`);
+            if (!prediction.ok) {
+                const errorBody = await prediction.text();
+                throw new Error(`Replicate API error: ${errorBody}`);
             }
 
-            const prediction = await response.json();
-            console.log(`🔄 ${quality} prediction created:`, prediction.id);
+            const predictionData = await prediction.json();
+            console.log(`🔗 Prediction created with ID: ${predictionData.id}`);
 
-            const result = await this.pollReplicatePrediction(prediction.id, 60, quality);
-            if (result && result.output && result.output[0]) {
-                return result.output[0];
-            }
-            throw new Error(`No ${quality} image generated`);
+            // Poll for the result
+            const imageUrl = await this.pollReplicatePrediction(predictionData.id, 60, quality);
+            console.log(`🖼️ Replicate ${quality} image generated successfully.`);
+            return imageUrl;
+            
         } catch (error) {
-            console.error(`⚠️ Replicate ${quality} generation failed:`, error);
-            throw error;
+            console.warn(`⚠️ Replicate ${quality} generation failed:`, error);
+            throw new Error(`Replicate API error: ${error.message}`);
         }
     }
 
@@ -917,11 +888,14 @@ export class AIImageService {
     }
 
     async pollReplicatePrediction(predictionId, maxAttempts = 60, quality = 'MEDIUM') {
-        const baseInterval = quality === 'LOW' ? 500 : 1000; // Faster polling for LOW quality
-        const maxWait = quality === 'LOW' ? 30000 : 120000; // 30s for LOW, 2min for others
+        const baseInterval = quality === 'LOW' ? 150 : 500; // Much faster polling: 150ms for LOW, 500ms for others
+        const maxWait = quality === 'LOW' ? 15000 : 60000; // Shorter timeout: 15s for LOW, 1min for others
         const actualMaxAttempts = Math.min(maxAttempts, Math.floor(maxWait / baseInterval));
         
         console.log(`🔄 Polling prediction ${predictionId} (max ${actualMaxAttempts} attempts, ${baseInterval}ms intervals)`);
+        
+        let stuckInStartingCount = 0;
+        const maxStuckCount = 10; // If stuck in "starting" for 10 consecutive checks, abort
         
         for (let attempt = 1; attempt <= actualMaxAttempts; attempt++) {
             try {
@@ -931,35 +905,67 @@ export class AIImageService {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
-                const prediction = await response.json();
-                console.log(`🔄 Prediction status (${attempt}/${actualMaxAttempts}): ${prediction.status}`);
+                const data = await response.json();
+                console.log(`🔄 Prediction status (${attempt}/${actualMaxAttempts}): ${data.status}`);
                 
-                if (prediction.status === 'succeeded') {
-                    console.log('✅ Prediction succeeded!');
-                    return prediction.output?.[0] || prediction.output;
-                } else if (prediction.status === 'failed') {
-                    console.log(`❌ Prediction failed: ${prediction.error || 'Unknown error'}`);
-                    throw new Error(`Prediction failed: ${prediction.error || 'Unknown error'}`);
+                // Track if stuck in starting status
+                if (data.status === 'starting') {
+                    stuckInStartingCount++;
+                    if (stuckInStartingCount >= maxStuckCount) {
+                        console.warn(`⚠️ Prediction stuck in 'starting' status for ${maxStuckCount} attempts. Aborting.`);
+                        throw new Error('Prediction stuck in starting status - server may be overloaded');
+                    }
+                } else {
+                    stuckInStartingCount = 0; // Reset counter
                 }
                 
-                // Show progress for longer waits
-                if (attempt % 5 === 0 && attempt > 10) {
-                    console.log(`⏳ Still waiting... (${attempt}/${actualMaxAttempts}) Status: ${prediction.status}`);
+                if (data.status === 'succeeded') {
+                    if (data.output && data.output.length > 0 && data.output[0]) {
+                        const imageUrl = data.output[0];
+                        console.log(`✅ Prediction completed successfully! Image URL: ${imageUrl.substring(0, 50)}...`);
+                        // Verify the URL is valid
+                        if (typeof imageUrl === 'string' && imageUrl.length > 0) {
+                            return imageUrl;
+                        } else {
+                            console.error('❌ Invalid image URL received:', imageUrl);
+                            throw new Error('Prediction succeeded but returned invalid image URL');
+                        }
+                    } else {
+                        console.error('❌ Prediction succeeded but no valid output:', data.output);
+                        throw new Error('Prediction succeeded but no output received');
+                    }
+                } else if (data.status === 'failed') {
+                    const errorMsg = data.error || 'Unknown error occurred';
+                    console.error(`❌ Prediction failed: ${errorMsg}`);
+                    
+                    // Check for specific NSFW error and handle gracefully
+                    if (errorMsg.includes('NSFW content detected') || errorMsg.includes('safety')) {
+                        throw new Error('NSFW_DETECTED');
+                    }
+                    
+                    throw new Error(`Prediction failed: ${errorMsg}`);
+                } else if (data.status === 'canceled') {
+                    throw new Error('Prediction was canceled');
                 }
                 
-                // Wait before next poll
-                if (attempt < actualMaxAttempts) {
-                    await new Promise(resolve => setTimeout(resolve, baseInterval));
+                // Log progress every 5 attempts for LOW quality, every 10 for others
+                const logInterval = quality === 'LOW' ? 5 : 10;
+                if (attempt % logInterval === 0) {
+                    console.log(`⏳ Still waiting... (${attempt}/${actualMaxAttempts}) Status: ${data.status}`);
                 }
+                
+                // Wait before next poll - shorter for LOW quality
+                await new Promise(resolve => setTimeout(resolve, baseInterval));
+                
             } catch (error) {
-                console.log(`⚠️ Error during polling attempt ${attempt}:`, error);
+                if (error.message.includes('NSFW_DETECTED')) {
+                    throw error; // Re-throw NSFW errors
+                }
+                
+                console.warn(`⚠️ Error during polling attempt ${attempt}:`, error);
                 
                 // For connection errors, wait a bit longer before retrying
-                if (error.message.includes('Failed to fetch') || error.message.includes('CONNECTION_REFUSED')) {
-                    await new Promise(resolve => setTimeout(resolve, baseInterval * 2));
-                } else {
-                    await new Promise(resolve => setTimeout(resolve, baseInterval));
-                }
+                await new Promise(resolve => setTimeout(resolve, baseInterval * 2));
             }
         }
         
@@ -1396,5 +1402,7 @@ export class AIImageService {
         }
         return Math.abs(hash);
     }
+
+
 } 
 

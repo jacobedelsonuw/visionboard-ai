@@ -5,9 +5,7 @@ export class TheVisionBoard {
     constructor() {
         // Initialize services
         this.aiService = new AIImageService(window.CONFIG, (imageUrl, prompt) => {
-            if (this) {
-                this.addImageToBoard(imageUrl, prompt, true);
-            }
+            return this.addImageToBoard(imageUrl, prompt);
         });
         this.exportService = new ExportService();
         
@@ -24,7 +22,10 @@ export class TheVisionBoard {
         this.recognition = null;
         this.isListening = false;
         this.generationQueue = [];
-        this.currentZIndex = 10;
+        this.currentZIndex = 100;
+        this.speechPauseTimer = null; // Timer for speech pause detection
+        this.speechPauseDelay = 5000; // 5 seconds pause delay before processing speech
+        this.lastSpeechTimestamp = 0; // Track when last speech was detected
         
         // Initialize UI elements
         this.initializeUI();
@@ -43,6 +44,11 @@ export class TheVisionBoard {
         
         // Display AI status
         this.displayAIStatus();
+
+        // Add upgrade callback for background enhancement
+        this.aiService.upgradeImageCallback = (imageId, newImageUrl, newPrompt) => {
+            this.upgradeImage(imageId, newImageUrl, newPrompt);
+        };
 
         this.init();
     }
@@ -547,11 +553,20 @@ export class TheVisionBoard {
     }
 
     addImageToBoard(imageUrl, prompt, isContextual = false) {
-        if (!imageUrl || !this.moodBoard) {
-            console.error('Invalid image URL or mood board element');
-            this.updateStatus('Failed to add image.', 'error');
+        if (!imageUrl) {
+            console.error('❌ Invalid image URL:', imageUrl, 'Type:', typeof imageUrl);
+            this.updateStatus('Failed to add image - invalid URL.', 'error');
             return;
         }
+        
+        if (!this.moodBoard) {
+            console.error('❌ Mood board element not found or not initialized');
+            this.updateStatus('Failed to add image - mood board not ready.', 'error');
+            return;
+        }
+        
+        console.log(`✅ Adding image to board. URL: ${imageUrl.substring(0, 50)}..., Prompt: "${prompt}"`);
+        
 
         const moodItem = document.createElement('div');
         moodItem.className = 'mood-item';
@@ -657,6 +672,9 @@ export class TheVisionBoard {
         this.updateImageCount();
         this.updateContextualCount();
         this.drawConnectionLines(); // Update connection lines
+        
+        // Return the imageId for background enhancement system
+        return imageId;
     }
 
     updateImageCount() {
@@ -675,46 +693,149 @@ export class TheVisionBoard {
     enableDragAndDrop(element) {
         let isDragging = false;
         let offsetX, offsetY;
-    
+        let rafId = null;
+        let initialPositionSet = false;
+        
+        // Use a faster drag detection method
         element.addEventListener('mousedown', (e) => {
+            // Prevent default to avoid text selection
+            e.preventDefault();
+            
             isDragging = true;
-            element.style.position = 'absolute';
+            
+            // Only set position to absolute if not already set, and preserve current position
+            if (!initialPositionSet) {
+                // Store the current visual position before any style changes
+                const rect = element.getBoundingClientRect();
+                const boardRect = this.moodBoard.getBoundingClientRect();
+                
+                console.log(`🎯 Initial position capture:`);
+                console.log(`   Element visual position: (${rect.left}, ${rect.top})`);
+                console.log(`   Element size: ${rect.width}x${rect.height}`);
+                console.log(`   Board position: (${boardRect.left}, ${boardRect.top})`);
+                
+                // Calculate position relative to the mood board's content area (excluding border/padding)
+                const boardStyle = window.getComputedStyle(this.moodBoard);
+                const borderLeft = parseInt(boardStyle.borderLeftWidth) || 0;
+                const borderTop = parseInt(boardStyle.borderTopWidth) || 0;
+                const paddingLeft = parseInt(boardStyle.paddingLeft) || 0;
+                const paddingTop = parseInt(boardStyle.paddingTop) || 0;
+                
+                // Position relative to mood board content area
+                const relativeX = rect.left - boardRect.left - borderLeft - paddingLeft;
+                const relativeY = rect.top - boardRect.top - borderTop - paddingTop;
+                
+                console.log(`   Board border: (${borderLeft}, ${borderTop})`);
+                console.log(`   Board padding: (${paddingLeft}, ${paddingTop})`);
+                console.log(`   Calculated relative position: (${relativeX}, ${relativeY})`);
+                
+                // Apply the positioning immediately
+                element.style.position = 'absolute';
+                element.style.left = relativeX + 'px';
+                element.style.top = relativeY + 'px';
+                element.style.margin = '0';
+                element.style.transform = 'none';
+                
+                // Force a reflow to ensure the position is applied
+                element.offsetHeight;
+                
+                initialPositionSet = true;
+                
+                // Verify the position after setting
+                const newRect = element.getBoundingClientRect();
+                console.log(`   New position after absolute: (${newRect.left}, ${newRect.top})`);
+                console.log(`   Position difference: (${newRect.left - rect.left}, ${newRect.top - rect.top})`);
+            }
+            
             element.style.zIndex = ++this.currentZIndex;
-            offsetX = e.clientX - element.getBoundingClientRect().left;
-            offsetY = e.clientY - element.getBoundingClientRect().top;
             element.style.cursor = 'grabbing';
+            element.style.transition = 'none'; // Disable transitions during drag
+            
+            // Calculate offset based on current position
+            const rect = element.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+            
+            // Capture mouse to ensure smooth dragging
+            element.setPointerCapture && element.setPointerCapture(e.pointerId);
         });
     
+        // Optimized mousemove with requestAnimationFrame for smooth performance
         document.addEventListener('mousemove', (e) => {
-            if (isDragging) {
+            if (!isDragging) return;
+            
+            // Cancel previous animation frame if still pending
+            if (rafId) cancelAnimationFrame(rafId);
+            
+            rafId = requestAnimationFrame(() => {
                 const boardRect = this.moodBoard.getBoundingClientRect();
                 let x = e.clientX - offsetX - boardRect.left;
                 let y = e.clientY - offsetY - boardRect.top;
     
-                // Constrain to mood board boundaries
-                x = Math.max(0, Math.min(x, boardRect.width - element.offsetWidth));
-                y = Math.max(0, Math.min(y, boardRect.height - element.offsetHeight));
+                // Constrain to mood board boundaries with some padding
+                const padding = 10;
+                x = Math.max(-padding, Math.min(x, boardRect.width - element.offsetWidth + padding));
+                y = Math.max(-padding, Math.min(y, boardRect.height - element.offsetHeight + padding));
     
-                element.style.left = `${x}px`;
-                element.style.top = `${y}px`;
-            }
+                // Use left/top positioning since we're using absolute positioning
+                element.style.left = x + 'px';
+                element.style.top = y + 'px';
+            });
         });
     
-        document.addEventListener('mouseup', () => {
+        // Clean mouseup handler
+        document.addEventListener('mouseup', (e) => {
             if (isDragging) {
                 isDragging = false;
                 element.style.cursor = 'grab';
+                element.style.transition = ''; // Re-enable transitions
+                
+                // Clean up animation frame
+                if (rafId) {
+                    cancelAnimationFrame(rafId);
+                    rafId = null;
+                }
+                
+                // Release pointer capture
+                element.releasePointerCapture && element.releasePointerCapture(e.pointerId);
             }
         });
+        
+        // Add touch support for mobile
+        element.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            element.dispatchEvent(mouseEvent);
+        });
+        
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            document.dispatchEvent(mouseEvent);
+        });
+        
+        document.addEventListener('touchend', (e) => {
+            if (!isDragging) return;
+            const mouseEvent = new MouseEvent('mouseup', {});
+            document.dispatchEvent(mouseEvent);
+        });
     }
-
-
 
     startAutoGeneration() {
         if (!this.autoGenerateEnabled) return;
         
         const speed = this.speedControl ? parseInt(this.speedControl.value) : 5;
-        const interval = Math.max(2000, (11 - speed) * 300); // Maps 1-10 to 3000-2000ms (much faster)
+        // Map speed 1-10 to 10-5 seconds (10000ms to 5000ms)
+        const interval = Math.max(5000, 15000 - (speed * 1000)); // Maps 1-10 to 14000-5000ms
         
         console.log(`🤖 Starting auto-generation with ${interval/1000}s interval (speed: ${speed})`);
         
@@ -783,7 +904,7 @@ export class TheVisionBoard {
 
         this.recognition.onstart = () => {
             this.isListening = true;
-            this.updateStatus('Listening...', 'info');
+            this.updateStatus(`Listening... (${this.speechPauseDelay/1000}s pause required)`, 'info');
         };
 
         this.recognition.onresult = (event) => {
@@ -798,21 +919,42 @@ export class TheVisionBoard {
                 }
             }
             
+            // Update the prompt input with current transcript
             this.promptInput.value = finalTranscript + interimTranscript;
-
-            if (finalTranscript.trim()) {
-                this.handleGenerate(finalTranscript.trim());
-                this.analyzeSentiment(finalTranscript.trim());
+            
+            // Update last speech timestamp whenever any speech is detected
+            if (finalTranscript.trim() || interimTranscript.trim()) {
+                this.lastSpeechTimestamp = Date.now();
+                
+                // Show listening status with countdown
+                this.updateStatus(`Listening... speak then pause ${this.speechPauseDelay/1000}s to generate`, 'info');
+                
+                // Clear any existing pause timer
+                if (this.speechPauseTimer) {
+                    clearTimeout(this.speechPauseTimer);
+                }
+                
+                // Set new pause timer only if we have final transcript
+                if (finalTranscript.trim()) {
+                    this.speechPauseTimer = setTimeout(() => {
+                        this.processSpeechInput(finalTranscript.trim());
+                    }, this.speechPauseDelay);
+                    
+                    // Show waiting status
+                    this.updateStatus(`Processing in ${this.speechPauseDelay/1000}s... (keep speaking to reset)`, 'warning');
+                }
             }
         };
 
         this.recognition.onerror = (event) => {
             this.updateStatus(`Speech recognition error: ${event.error}`, 'error');
+            this.clearSpeechTimer();
         };
 
         this.recognition.onend = () => {
             this.isListening = false;
             this.updateStatus('');
+            this.clearSpeechTimer();
         };
 
         this.recognition.start();
@@ -822,6 +964,26 @@ export class TheVisionBoard {
         if (this.recognition && this.isListening) {
             this.recognition.stop();
         }
+        this.clearSpeechTimer();
+    }
+
+    clearSpeechTimer() {
+        if (this.speechPauseTimer) {
+            clearTimeout(this.speechPauseTimer);
+            this.speechPauseTimer = null;
+        }
+    }
+
+    processSpeechInput(transcript) {
+        console.log(`🎤 Processing speech input after ${this.speechPauseDelay/1000}s pause: "${transcript}"`);
+        this.updateStatus(`Generating image from speech: "${transcript}"`, 'success');
+        
+        // Process the speech input
+        this.handleGenerate(transcript);
+        this.analyzeSentiment(transcript);
+        
+        // Clear the timer
+        this.clearSpeechTimer();
     }
 
     async analyzeSentiment(text) {
@@ -1012,6 +1174,56 @@ export class TheVisionBoard {
         `;
         
         this.moodBoard.appendChild(line);
+    }
+
+    upgradeImage(imageId, newImageUrl, newPrompt) {
+        // Find the image element in the DOM
+        const imageElement = document.querySelector(`[data-image-id="${imageId}"]`);
+        if (!imageElement) {
+            console.warn(`⚠️ Could not find image element with ID: ${imageId}`);
+            return;
+        }
+        
+        // Find the img tag within the element
+        const imgTag = imageElement.querySelector('img');
+        if (!imgTag) {
+            console.warn(`⚠️ Could not find img tag in element: ${imageId}`);
+            return;
+        }
+        
+        // Update the image data in our array
+        const imageData = this.generatedImages.find(img => img.id === imageId);
+        if (imageData) {
+            imageData.url = newImageUrl;
+            imageData.prompt = newPrompt;
+            console.log(`🔄 Updated image data for ${imageId}`);
+        }
+        
+        // Create a smooth transition effect
+        imgTag.style.transition = 'opacity 0.3s ease-in-out';
+        imgTag.style.opacity = '0.7';
+        
+        // Update the image source with the higher quality version
+        imgTag.onload = () => {
+            imgTag.style.opacity = '1';
+            console.log(`✨ Successfully upgraded image ${imageId} to higher quality`);
+            
+            // Add a subtle glow effect to indicate the upgrade
+            imageElement.style.boxShadow = '0 0 20px rgba(0, 255, 0, 0.3)';
+            setTimeout(() => {
+                imageElement.style.boxShadow = '';
+            }, 2000);
+        };
+        
+        imgTag.onerror = () => {
+            // If the new image fails to load, revert
+            imgTag.style.opacity = '1';
+            console.warn(`⚠️ Failed to load upgraded image for ${imageId}`);
+        };
+        
+        // Set the new image URL
+        imgTag.src = newImageUrl;
+        imgTag.alt = newPrompt;
     }
 }
 
