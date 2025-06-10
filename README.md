@@ -1,59 +1,57 @@
-# VisionBoard 🎨
+# VisionBoard AI 🎨
 
-An intelligent, AI-powered mood board creator that generates stunning images based on your prompts and contextual understanding. VisionBoard combines multiple AI services to create dynamic, interconnected visual collections.
+An intelligent mood board generator that creates AI-powered images with progressive quality enhancement, speech recognition, and smart contextual generation.
 
-![VisionBoard Demo](https://img.shields.io/badge/Status-Active-brightgreen)
-![Node.js](https://img.shields.io/badge/Node.js-18+-blue)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+![VisionBoard AI Screenshot](image.png)
 
 ## ✨ Features
 
-### 🚀 **Core Generation**
-- **Text-to-Image**: Generate images from descriptive prompts
-- **Progressive Quality**: LOW → HIGH → ENHANCED_HIGH quality progression
-- **Multiple AI Services**: Replicate API + Local Stable Diffusion support
-- **Service Toggle**: Switch between AI providers with one click
+### 🖼️ Progressive Image Generation
+- **Multi-Quality Pipeline**: LOW (256×256, 3 steps) → MEDIUM (384×384, 8 steps) → HIGH (512×512, 15 steps) → ENHANCED_HIGH (768×768, 30 steps)
+- **Instant Preview**: Show low-quality images immediately, then upgrade in background
+- **Visual Feedback**: Glow effects when images upgrade to higher quality
+- **Smart Optimization**: Ultra-fast 150ms polling for LOW quality, optimized settings for speed
 
-### 🧠 **Intelligent Generation**
-- **Auto-Generate**: Continuously creates images based on previous generations (2-3 second intervals)
-- **Contextual Generation**: Analyzes all previous images to create related content (1-2 second intervals)
-- **Speed Control**: Adjustable generation speed (1-10 scale)
-- **Smart Prompting**: AI-enhanced prompt enrichment
+### 🎤 Voice Control
+- **Speech Recognition**: Generate images from voice commands
+- **Smart Pause Detection**: 5-second silence delay before processing speech
+- **Real-time Transcription**: Live display of speech input
+- **Sentiment Analysis**: Emotional context detection from voice input
 
-### 🔗 **Image Management** 
-- **Visual Connections**: Link images together with animated connection lines
-- **Generate Connected**: Create new images from combined connected image prompts
-- **Delete Images**: Alt+click or button controls for easy removal
-- **Generate Similar**: Create variations of existing images
-- **Drag & Drop**: Repositionable images on the board
+### 🎯 Smart Generation
+- **Auto-Generation**: Continuous image creation every 5-10 seconds based on speed control
+- **Contextual Generation**: AI analyzes previous images to create thematically connected content
+- **Prompt Enhancement**: Replicate API integration for detailed, artistic prompt improvement
+- **Connected Images**: Link images together and generate combinations
 
-### 🎛️ **Advanced Controls**
-- **Audio Input**: Voice-to-text prompt generation
-- **Sentiment Analysis**: Real-time emotional analysis with emoji feedback
-- **Export Options**: PowerPoint and Google Slides export
-- **Large Canvas**: Expansive mood board (up to 2400px wide)
-- **Real-time Stats**: Track images, contextual generations, and connections
+### 🖱️ Intuitive Interface
+- **Perfect Drag & Drop**: Images stay at generated position, smooth 60fps dragging
+- **Compact Layout**: Clean 180×180px image grid optimized for mood boards
+- **Image Controls**: 
+  - Alt+Click to delete
+  - Double-click to connect/disconnect
+  - Hover for control menu
+- **Responsive Design**: Works on desktop, tablet, and mobile
 
-### 🎨 **Visual Features**
-- **Contextual Styling**: Blue borders and pulse animations for AI-generated content
-- **Connection Lines**: Animated lines between linked images
-- **Hover Controls**: Quick access to image management tools
-- **Responsive Grid**: Auto-adjusting layout for different screen sizes
-- **Modern UI**: Clean, intuitive interface with smooth animations
+### 🚀 AI Services Integration
+- **Replicate API**: High-quality Stable Diffusion image generation
+- **Local Stable Diffusion**: Optional local generation support
+- **Prompt Enhancement**: AI-powered artistic prompt improvement
+- **Background Processing**: Non-blocking progressive enhancement
 
-## 🛠️ Installation
+## 🛠️ Installation & Setup
 
 ### Prerequisites
-- Node.js 18+ 
+- Node.js (v16 or higher)
 - npm or yarn
-- Replicate API key (optional)
-- Local Stable Diffusion setup (optional)
+- Replicate API key
 
-### Setup
+### Quick Start
+
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/visionboard.git
-   cd visionboard
+   git clone https://github.com/jacobedelsonuw/visionboard-ai.git
+   cd visionboard-ai
    ```
 
 2. **Install dependencies**
@@ -61,190 +59,143 @@ An intelligent, AI-powered mood board creator that generates stunning images bas
    npm install
    ```
 
-3. **Configure environment variables**
+3. **Set up your Replicate API key**
    ```bash
-   cp .env.example .env
-   # Edit .env file with your API keys
+   export REPLICATE_API_TOKEN="your_api_key_here"
    ```
 
-4. **Build the project**
-   ```bash
-   npm run build
-   ```
-
-5. **Start the server**
+4. **Start the application**
    ```bash
    npm start
    ```
 
-6. **Open in browser**
-   ```
-   http://localhost:3000
-   ```
+5. **Open your browser**
+   Navigate to `http://localhost:3000`
+
+## 🎮 Usage
+
+### Basic Image Generation
+1. Type a prompt in the text input (e.g., "mystical forest with glowing mushrooms")
+2. Click "Generate" or press Enter
+3. Watch as your image appears instantly in LOW quality, then upgrades automatically
+
+### Voice Commands
+1. Toggle "Audio Input" on
+2. Speak your vision (e.g., "romantic sunset over mountains")
+3. Wait for the 5-second pause, then watch your image generate
+
+### Auto-Generation Mode
+1. Enable "Auto Generate" toggle
+2. Adjust speed slider (1-10, affects 5-15 second intervals)
+3. Let the AI continuously create images based on your prompt history
+
+### Contextual Generation
+1. Enable "Contextual Generation"
+2. The AI analyzes your existing images and creates thematically related content
+3. Creates artistic connections between your visual concepts
+
+### Image Management
+- **Connect Images**: Double-click or use 🔗 button to link images
+- **Generate Connected**: Use connected images to create combination prompts
+- **Delete Images**: Alt+click or use × button
+- **Drag & Drop**: Click and drag images to rearrange your mood board
 
 ## ⚙️ Configuration
 
-### Environment Variables
-```env
-REPLICATE_API_TOKEN=your_replicate_token_here
-STABILITY_API_KEY=your_stability_key_here
-LOCAL_SD_URL=http://127.0.0.1:7860
-```
+Key settings in `config.js`:
 
-### AI Service Priority
-Configure in `config.js`:
 ```javascript
-SERVICE_PRIORITY: ['REPLICATE', 'LOCAL_SD'] // or ['LOCAL_SD', 'REPLICATE']
+REPLICATE: {
+    ENABLED: true,
+    QUALITY_LEVELS: {
+        LOW: { steps: 3, width: 256, height: 256, guidance_scale: 2 },
+        MEDIUM: { steps: 8, width: 384, height: 384, guidance_scale: 4 },
+        HIGH: { steps: 15, width: 512, height: 512, guidance_scale: 6 },
+        ENHANCED_HIGH: { steps: 30, width: 768, height: 768, guidance_scale: 7.5 }
+    }
+},
+AUTO_GENERATION: {
+    ENABLED: true,
+    INTERVAL: 800, // milliseconds between generations
+    MAX_AUTO_IMAGES: 15
+},
+BACKGROUND_ENHANCEMENT: true // Enable progressive quality upgrades
 ```
-
-## 🎯 Usage
-
-### Basic Image Generation
-1. Enter a descriptive prompt in the input field
-2. Click "Generate" or press Enter
-3. Watch as LOW → HIGH → ENHANCED_HIGH quality images appear
-
-### Auto-Generation Mode
-1. Toggle "Auto Generate" switch
-2. Adjust speed slider (1-10)
-3. System automatically creates images every 2-3 seconds based on previous content
-
-### Contextual Generation
-1. Enable "Contextual Generation" toggle
-2. System analyzes all previous images
-3. Generates related content every 1-2 seconds
-4. Contextual images appear with blue borders and pulse animation
-
-### Image Management
-- **Connect Images**: Double-click or use 🔗 button
-- **Delete Images**: Alt+click or use × button  
-- **Generate Similar**: Click ⚡ button
-- **Generate Connected**: Use "Generate Connected" button after linking images
-
-### Voice Input
-1. Enable "Audio Input" toggle
-2. Speak your prompt
-3. System automatically generates image from speech
 
 ## 🏗️ Architecture
 
 ### Core Components
-- **TheVisionBoard**: Main application class
-- **AIImageService**: Handles multiple AI providers
-- **ExportService**: PowerPoint/Google Slides export
-- **Server**: Express.js proxy server
+- **`script.js`**: Main application logic, UI interactions, drag & drop
+- **`ai-service.js`**: AI integration, progressive generation, API management
+- **`config.js`**: Configuration settings and quality levels
+- **`styles.css`**: Responsive design and visual effects
+- **`server.cjs`**: Express server with API proxying
 
-### AI Integration
-- **Replicate API**: Primary cloud-based generation
-- **Local Stable Diffusion**: Local generation option
-- **Ollama**: Prompt enhancement (when available)
-- **HuggingFace**: Sentiment analysis
+### Progressive Generation Flow
+1. User submits prompt
+2. Generate LOW quality image (3 steps, ~3-5 seconds)
+3. Display immediately on mood board
+4. Background: Generate MEDIUM quality
+5. Background: Upgrade to HIGH quality
+6. Background: Final upgrade to ENHANCED_HIGH
+7. Visual feedback during each upgrade
 
-### File Structure
-```
-visionboard/
-├── dist/                  # Built JavaScript bundles
-├── styles.css            # Main stylesheet
-├── script.js             # Core application logic
-├── ai-service.js         # AI service integration
-├── config.js             # Configuration settings
-├── server.cjs            # Express server
-├── index.html            # Main HTML file
-└── package.json          # Dependencies
-```
+## 🎨 Advanced Features
 
-## 🚀 Performance Optimizations
+### Prompt Enhancement
+The AI automatically enhances your prompts for better artistic results:
+- Input: "castle"
+- Enhanced: "Majestic medieval castle with dramatic lighting, photorealistic detail, cinematic composition, golden hour lighting, architectural masterpiece"
 
-- **Progressive Loading**: Images appear immediately at each quality level
-- **Queue Management**: Efficient handling of multiple generations
-- **Smart Polling**: Optimized API polling intervals
-- **Connection Recovery**: Automatic retry on API failures
-- **Memory Management**: Efficient image handling and cleanup
+### Smart Contextual Generation
+Analyzes your mood board content to generate related images:
+- Detects themes, colors, and artistic styles
+- Creates variations and complementary content
+- Maintains visual cohesion across your board
 
-## 🔧 Advanced Features
+### Export Options
+- **Image Export**: Save your complete mood board as a single image
+- **PowerPoint Export**: Generate presentation slides with your images
+- **Google Slides**: Direct export to Google Slides (coming soon)
 
-### Speed Control Mapping
-- **Speed 10**: 1-2 second intervals (ultra-fast)
-- **Speed 5**: 2-3 second intervals (balanced)
-- **Speed 1**: 3-4 second intervals (conservative)
+## 🚦 Performance Optimizations
 
-### Quality Levels
-- **LOW**: 256×256, 5 steps, 500ms polling
-- **HIGH**: 768×1024, 50 steps, 1000ms polling  
-- **ENHANCED_HIGH**: 768×1024, enhanced prompts, high quality
-
-### Connection System
-- Visual lines between connected images
-- Combined prompt generation
-- Animated connection indicators
-- Group management capabilities
-
-## 🎨 Customization
-
-### Styling
-Modify `styles.css` for visual customization:
-- Board dimensions
-- Color schemes
-- Animation timings
-- Grid layouts
-
-### AI Parameters
-Adjust in `ai-service.js`:
-- Generation steps
-- Image dimensions
-- Guidance scales
-- Polling intervals
-
-## 🐛 Troubleshooting
-
-### Common Issues
-1. **NSFW Content Detected**: Try different, more specific prompts
-2. **Generation Fails**: Check API keys and service status
-3. **Slow Performance**: Reduce speed setting or check network
-4. **Images Not Loading**: Verify proxy server is running
-
-### Debug Mode
-Enable console logging:
-```javascript
-// In browser console
-localStorage.setItem('debug', 'true');
-```
+- **Ultra-fast LOW quality**: 150ms polling, 3-step generation
+- **RequestAnimationFrame**: Smooth 60fps drag animations
+- **Background processing**: Non-blocking progressive enhancement
+- **Smart caching**: Efficient image loading and display
+- **Optimized polling**: Dynamic intervals based on quality level
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🎓 Academic Project
-
-This project was developed as part of the course project for **David McDonald's course**:
-- **Course**: HCDE 548/HCDE 598 - Designing the AI Prototype: Prototyping & Engineering AI Driven Applications
-- **Institution**: University of Washington (UW)
-- **Focus**: Exploring AI-driven application development and prototyping methodologies
-
 ## 🙏 Acknowledgments
 
-- [Replicate](https://replicate.com/) for AI image generation API
-- [Stable Diffusion](https://stability.ai/) for local generation capabilities
-- [HuggingFace](https://huggingface.co/) for sentiment analysis
-- [Express.js](https://expressjs.com/) for server framework
-- **David McDonald** and the HCDE program at University of Washington for course guidance and framework
+- **Replicate** for powerful AI model hosting
+- **Stable Diffusion** for incredible image generation capabilities
+- **Web Speech API** for voice recognition
+- **Express.js** for the robust server framework
 
-## 📊 Stats & Metrics
+## 📊 Stats
 
-- **Generation Speed**: 1-4 seconds per image
-- **Supported Formats**: JPG, PNG, WebP
-- **Max Board Size**: 2400px wide
-- **Concurrent Generations**: Queue-based processing
-- **AI Services**: 2+ integrated providers
+- **Generation Speed**: 3-5 seconds for initial preview
+- **Quality Levels**: 4 progressive enhancement stages
+- **Image Sizes**: 180×180px optimized display
+- **Max Resolution**: 768×768px enhanced quality
+- **Auto-Generation**: 5-15 second intervals
+- **Speech Delay**: 5-second pause detection
 
 ---
 
-**Built with ❤️ for creative minds who love AI-powered visual experiences** 
+**Created with ❤️ by Jacob Edelson**
+
+*Transform your ideas into stunning visual mood boards with the power of AI* 
